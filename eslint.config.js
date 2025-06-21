@@ -21,6 +21,7 @@ export default tseslint.config(
       'vite.config.ts.timestamp-*',
       '*.min.js',
       '*.d.ts',
+      '.history',
     ],
   },
 
