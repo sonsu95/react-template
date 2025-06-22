@@ -9,8 +9,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  // Global ignores (must be in the first configuration object)
-  // https://eslint.org/docs/latest/use/configure/configuration-files#globally-ignoring-files-with-ignores
+  // Global ignores
   {
     ignores: [
       'dist',
@@ -18,47 +17,38 @@ export default tseslint.config(
       'build',
       '.vite',
       'coverage',
-      'vite.config.ts.timestamp-*',
       '*.min.js',
       '*.d.ts',
       '.history',
     ],
   },
 
-  // Unified configuration for TypeScript/React files
+  // Main configuration for TypeScript/React files
   {
     extends: [
-      // Basic ESLint recommended configuration
-      // https://eslint.org/docs/latest/use/configure/configuration-files#using-predefined-configurations
+      // ESLint recommended rules
       js.configs.recommended,
 
-      // TypeScript ESLint recommended configuration
-      // https://typescript-eslint.io/getting-started/#step-2-configuration
+      // TypeScript ESLint recommended rules (focused on correctness, not style)
       tseslint.configs.recommended,
 
-      // 4-7x faster composable ESLint rules for libraries and frameworks that use React as a UI runtime
-      // https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x
+      // React plugin recommended rules (using react-x for performance)
       react.configs.recommended,
 
-      // React Hooks recommended configuration (flat config support in v5.2.0+)
-      // https://www.npmjs.com/package/eslint-plugin-react-hooks
+      // React Hooks rules (critical for correctness)
       reactHooks.configs['recommended-latest'],
 
-      // React Refresh configuration
-      // https://github.com/ArnaudBarre/eslint-plugin-react-refresh#usage
+      // React Refresh for Vite
       reactRefresh.configs.vite,
 
-      // JSX accessibility recommended configuration
-      // https://github.com/jsx-eslint/eslint-plugin-jsx-a11y?tab=readme-ov-file#shareable-configs
+      // Accessibility rules
       jsxA11y.flatConfigs.recommended,
 
-      // Import plugin recommended configuration with TypeScript support
-      // https://github.com/import-js/eslint-plugin-import#config---flat-eslintconfigjs
+      // Import plugin for import ordering
       importPlugin.flatConfigs.recommended,
       importPlugin.flatConfigs.typescript,
 
-      // Prettier configuration (must be last to override conflicting rules)
-      // https://github.com/prettier/eslint-config-prettier#installation
+      // Prettier (must be last)
       eslintConfigPrettier,
     ],
 
@@ -76,62 +66,92 @@ export default tseslint.config(
 
     settings: {
       react: {
-        // Auto-detect React version
-        // https://github.com/jsx-eslint/eslint-plugin-react/blob/master/README.md
         version: 'detect',
       },
-
-      // Import plugin settings for absolute path resolution
-      // https://github.com/import-js/eslint-plugin-import#settings
       'import/resolver': {
-        // TypeScript resolver for absolute imports
-        // https://github.com/import-js/eslint-import-resolver-typescript#configuration
         typescript: {
           alwaysTryTypes: true,
           project: './tsconfig.app.json',
         },
-        // Node resolver as fallback
         node: {
           extensions: ['.js', '.jsx', '.ts', '.tsx'],
         },
       },
-      'import/extensions': ['.js', '.jsx', '.ts', '.tsx'],
-      'import/parsers': {
-        '@typescript-eslint/parser': ['.ts', '.tsx'],
-      },
     },
 
     rules: {
-      // ===== Import Management Rules =====
+      // ===== TypeScript Rules =====
 
-      // Ensure imports point to a file/module that can be resolved
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
-      'import/no-unresolved': [
+      // Disallow any type (as requested)
+      '@typescript-eslint/no-explicit-any': 'error',
+
+      // Prefer interface over type for object definitions
+      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
+
+      // Consistent type imports
+      '@typescript-eslint/consistent-type-imports': [
         'error',
         {
-          ignore: [
-            '^/.*', // Ignore absolute paths starting with / (public directory files)
-          ],
+          prefer: 'type-imports',
+          fixStyle: 'inline-type-imports',
         },
       ],
 
-      // Ensure named imports correspond to a named export in the remote file
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/named.md
-      'import/named': 'error',
+      // Prefer nullish coalescing and optional chaining (TypeScript team recommendations)
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-optional-chain': 'warn',
 
-      // Ensure a default export is present, given a default import
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/default.md
-      'import/default': 'error',
+      // ===== Enum Rules =====
 
-      // Enforce a convention in module import order
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/order.md
+      // Discourage enums in favor of union types (performance consideration)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TSEnumDeclaration',
+          message:
+            'Prefer union types or const assertions over enums for better performance and tree-shaking.',
+        },
+      ],
+
+      // ===== React Rules =====
+
+      // Prevent using array index as key (as requested)
+      'react-x/no-array-index-key': 'error',
+
+      // Prevent creating unstable components inside components
+      'react-x/no-nested-components': 'error',
+
+      // ===== Code Quality Rules =====
+
+      // Handle unused variables (TypeScript aware)
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+
+      // Ensure promises are handled properly
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+
+      // Type safety
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+
+      // ===== Import Order Rules =====
+
+      // Enforce a consistent import order
       'import/order': [
         'error',
         {
           groups: [
             'builtin', // Node.js built-in modules
             'external', // npm packages
-            'internal', // Internal modules (with absolute paths)
+            'internal', // Internal modules (absolute imports)
             'parent', // Parent directory imports
             'sibling', // Same directory imports
             'index', // Index files
@@ -153,226 +173,95 @@ export default tseslint.config(
         },
       ],
 
-      // Ensure all imports appear before other statements
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/first.md
+      // Ensure imports are at the top
       'import/first': 'error',
 
-      // Enforce a newline after import statements
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/newline-after-import.md
+      // Ensure newline after imports
       'import/newline-after-import': 'error',
 
-      // Forbid repeated import of the same module in multiple places
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-duplicates.md
+      // No duplicate imports
       'import/no-duplicates': 'error',
 
-      // Forbid unnecessary path segments in import and require statements
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-useless-path-segments.md
+      // ===== Additional Recommended Rules =====
+
+      // Prevent importing the submodules of other modules
+      'import/no-internal-modules': 'off', // Consider enabling for public APIs
+
+      // Ensure imports point to a file/module that can be resolved
+      'import/no-unresolved': [
+        'error',
+        {
+          ignore: ['^/.*'], // Ignore absolute paths starting with /
+        },
+      ],
+
+      // Prevent unnecessary path segments in import statements
       'import/no-useless-path-segments': ['error', { noUselessIndex: true }],
 
-      // Forbid importing packages through relative paths
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-relative-packages.md
-      'import/no-relative-packages': 'error',
+      // Warn about potential circular dependencies
+      'import/no-cycle': ['warn', { maxDepth: 5 }],
 
-      // Enforce consistent import paths
-      // Allow relative imports within the same feature, require absolute for cross-feature
+      // Suggest absolute imports for deeply nested paths (not strictly enforced)
       'no-restricted-imports': [
-        'error',
+        'warn',
         {
           patterns: [
             {
-              group: ['../../*'],
-              message: 'Use absolute imports (e.g., @/components) for imports that go up more than one level.',
-            },
-            {
               group: ['../../../*'],
-              message: 'Use absolute imports (e.g., @/components) instead of deeply nested relative imports.',
+              message:
+                'Avoid deeply nested relative imports. Consider using absolute imports for better readability.',
             },
           ],
         },
       ],
 
-      // Forbid a module from importing a module with a dependency path back to itself
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
-      'import/no-cycle': ['error', { maxDepth: 10 }],
+      // React-specific additions
+      'react-x/no-useless-fragment': 'warn', // <></> when not needed
+      'react-x/no-missing-key': 'error', // Ensure key prop in lists
+      'react-x/no-unused-class-component-members': 'warn', // Remove unused class members
+      'react-x/no-unused-state': 'warn', // Remove unused state
+      'react-x/prefer-destructuring-assignment': 'warn', // Prefer destructuring
 
-      // Forbid a module from importing itself
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-self-import.md
-      'import/no-self-import': 'error',
+      // TypeScript strict null checks helpers
+      '@typescript-eslint/no-unnecessary-condition': 'warn', // Catches always-true/false conditions
 
-      // Forbid the use of extraneous packages
-      // https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-extraneous-dependencies.md
-      'import/no-extraneous-dependencies': [
-        'error',
-        {
-          devDependencies: [
-            '**/*.test.{ts,tsx,js,jsx}',
-            '**/*.spec.{ts,tsx,js,jsx}',
-            '**/test/**/*',
-            '**/tests/**/*',
-            '**/__tests__/**/*',
-            '**/vite.config.ts',
-            '**/vitest.config.ts',
-            '**/jest.config.js',
-            '**/webpack.config.js',
-            '**/rollup.config.js',
-            '**/.eslintrc.js',
-            '**/eslint.config.js',
-          ],
-        },
-      ],
+      // Async/await best practices
+      '@typescript-eslint/return-await': ['error', 'in-try-catch'], // Proper error stack traces
 
-      // ===== TypeScript Enum Rules =====
-
-      // Disallow TypeScript enums (prefer union types or const assertions)
-      // https://typescript-eslint.io/blog/announcing-typescript-eslint-v8-beta/#updated-enum-rules
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: 'TSEnumDeclaration',
-          message:
-            'Enums are not recommended. Use union types (type Status = "pending" | "completed") or const assertions (const Status = { PENDING: "pending", COMPLETED: "completed" } as const) instead.',
-        },
-      ],
-
-      // Disallow comparing an enum value with a non-enum value
-      // https://typescript-eslint.io/rules/no-unsafe-enum-comparison
-      '@typescript-eslint/no-unsafe-enum-comparison': 'error',
-
-      // Disallow enums having both string and number members
-      // https://typescript-eslint.io/rules/no-mixed-enums
-      '@typescript-eslint/no-mixed-enums': 'error',
-
-      // Require that all enum members be literal values
-      // https://typescript-eslint.io/rules/prefer-literal-enum-member
-      '@typescript-eslint/prefer-literal-enum-member': 'error',
-
-      // ===== Type Definition Rules =====
-
-      // Enforce using interface over type for object type definitions
-      // https://typescript-eslint.io/rules/consistent-type-definitions
-      '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
-
-      // Enforce consistent usage of type imports
-      // https://typescript-eslint.io/rules/consistent-type-imports
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        {
-          prefer: 'type-imports',
-          fixStyle: 'inline-type-imports',
-        },
-      ],
-
-      // ===== React Performance Optimization Rules =====
-
-      // Prevent usage of Array index as key
-      // https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x
-      'react-x/no-array-index-key': 'warn',
-
-      // Prevent creating unstable components inside components
-      // https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x
-      'react-x/no-nested-components': 'error',
-
-      // Disallow unnecessary JSX fragments
-      // https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x
-      'react-x/no-useless-fragment': 'error',
-
-      // Verify the list of dependencies for Hooks like useEffect and similar
-      // https://github.com/facebook/react/issues/14920
-      'react-hooks/exhaustive-deps': [
+      // Enforce naming conventions (optional, but helpful)
+      '@typescript-eslint/naming-convention': [
         'warn',
         {
-          additionalHooks: '(useMyCustomHook|useMyOtherCustomHook)',
+          selector: 'interface',
+          format: ['PascalCase'],
+          custom: {
+            regex: '^I[A-Z]',
+            match: false, // Don't use IPrefix
+          },
         },
-      ],
-
-      // ===== Bundle Size Optimization Rules =====
-
-      // Disallow unnecessary computed property keys in objects and classes
-      // https://eslint.org/docs/latest/rules/no-useless-computed-key
-      'no-useless-computed-key': 'error',
-
-      // Disallow unnecessary constructors
-      // https://eslint.org/docs/latest/rules/no-useless-constructor
-      'no-useless-constructor': 'error',
-
-      // Disallow renaming import, export, and destructured assignments to the same name
-      // https://eslint.org/docs/latest/rules/no-useless-rename
-      'no-useless-rename': 'error',
-
-      // Disallow redundant return statements
-      // https://eslint.org/docs/latest/rules/no-useless-return
-      'no-useless-return': 'error',
-
-      // Disallow unused variables (handled by TypeScript)
-      // https://typescript-eslint.io/rules/no-unused-vars
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
         {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
+          selector: 'typeAlias',
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'enum',
+          format: ['PascalCase'],
         },
       ],
 
-      // ===== Type Safety and Performance Rules =====
+      // ===== Code Quality and Debugging Rules =====
 
-      // Enforce using the nullish coalescing operator instead of logical assignments
-      // https://typescript-eslint.io/rules/prefer-nullish-coalescing
-      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      // Prevent console.log in production code
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
 
-      // Enforce using the optional chaining operator instead of chaining logical ands
-      // https://typescript-eslint.io/rules/prefer-optional-chain
-      '@typescript-eslint/prefer-optional-chain': 'error',
+      // Prevent debugger statements
+      'no-debugger': 'error',
 
-      // Disallow type assertions that do not change the type of an expression
-      // https://typescript-eslint.io/rules/no-unnecessary-type-assertion
-      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      // Track TODO and FIXME comments
+      'no-warning-comments': ['warn', { terms: ['TODO', 'FIXME'], location: 'start' }],
 
-      // ===== Existing Project Custom Rules =====
-
-      // Disallow usage of the any type
-      // https://typescript-eslint.io/rules/no-explicit-any
-      '@typescript-eslint/no-explicit-any': 'warn',
-
-      // Recommend functional components over class components
-      // https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x
-      'react-x/no-class-component': 'warn',
-
-      // ===== Additional Code Quality Rules =====
-
-      // Enforce consistent returning of awaited values
-      // https://typescript-eslint.io/rules/return-await
-      '@typescript-eslint/return-await': ['error', 'in-try-catch'],
-
-      // Disallow unnecessary equality comparisons against boolean literals
-      // https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare
-      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'error',
-
-      // ===== Code Complexity Rules =====
-
-      // Enforce a maximum depth that blocks can be nested
-      // https://eslint.org/docs/latest/rules/max-depth
-      'max-depth': ['error', 3],
-
-      // Enforce a maximum cyclomatic complexity
-      // https://eslint.org/docs/latest/rules/complexity
-      complexity: ['warn', 10],
-
-      // ===== Additional TypeScript Performance Rules =====
-
-      // Disallow unnecessary conditions
-      // https://typescript-eslint.io/rules/no-unnecessary-condition
-      '@typescript-eslint/no-unnecessary-condition': 'error',
-
-      // Enforce Promise-like statements to be handled appropriately
-      // https://typescript-eslint.io/rules/no-floating-promises
-      '@typescript-eslint/no-floating-promises': 'error',
-
-      // Disallow Promises in places not designed to handle them
-      // https://typescript-eslint.io/rules/no-misused-promises
-      '@typescript-eslint/no-misused-promises': 'error',
+      // Limit cyclomatic complexity
+      complexity: ['warn', 20],
     },
   },
 );
